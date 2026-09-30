@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef8ff;
+  --color-brand-100: #d9efff;
+  --color-brand-200: #bce2ff;
+  --color-brand-300: #8ecfff;
+  --color-brand-400: #4fb3fb;
+  --color-brand-500: #1f93ef;
+  --color-brand-600: #0d74d1;
+  --color-brand-700: #0d5ca8;
+  --color-brand-800: #104c88;
+  --color-brand-900: #0b2f56;
+  --color-brand-950: #061a33;
+
+  --color-aqua-400: #2ad2f0;
+  --color-aqua-500: #12b6da;
+  --color-mint-400: #22c58b;
+  --color-sun-400: #ffab3d;
+  --color-coral-400: #ff6b57;
+  --color-violet-400: #7c6cff;
+
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue",
+    Arial, sans-serif;
+
+  --shadow-soft: 0 24px 60px -28px rgba(11, 47, 86, 0.35);
+  --shadow-card: 0 12px 32px -18px rgba(11, 47, 86, 0.4);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes growBar {
+  from {
+    transform: scaleY(0.05);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.animate-floaty {
+  animation: floaty 6s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.7s ease-out both;
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+.animate-bar {
+  transform-origin: bottom;
+  animation: growBar 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+.gradient-text {
+  background: linear-gradient(95deg, #2ad2f0 0%, #1f93ef 45%, #7c6cff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.grid-glow {
+  background-image:
+    radial-gradient(60% 55% at 50% 0%, rgba(42, 210, 240, 0.22) 0%, transparent 70%),
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+}
+
+.kanban-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: rgba(11, 47, 86, 0.18);
+  border-radius: 999px;
+}
