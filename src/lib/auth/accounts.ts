@@ -2,14 +2,23 @@ import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appUsers, workspaces } from "@/db/schema";
+import { authMode, MIN_PASSWORD_LENGTH } from "@/lib/auth/config";
+import { AuthError } from "@/lib/auth/errors";
+import { signSession, type SessionUser } from "@/lib/auth/session";
 import {
-  FirebaseAuthError,
-  firebaseErrorMessage,
+  assertNotThrottled,
+  clearFailures,
+  recordFailure,
+  throttleKey,
+} from "@/lib/auth/throttle";
+import {
+  explainFirebaseError,
+  firebaseSetDisplayName,
   firebaseSignIn,
   firebaseSignUp,
-  firebaseUpdateProfile,
 } from "@/lib/firebase/rest";
-import { signSession, type SessionUser } from "@/lib/auth/session";
+
+/* ───────────────────────── password hashing ───────────────────────── */
 
 function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -17,33 +26,43 @@ function hashPassword(password: string) {
   return `scrypt:${salt}:${hash}`;
 }
 
-function checkPassword(password: string, stored: string | null) {
-  if (!stored?.startsWith("scrypt:")) return false;
-  const [, salt, hash] = stored.split(":");
-  if (!salt || !hash) return false;
+// A real hash to compare against when the account does not exist, so a missing
+// user and a wrong password take the same time and cannot be told apart.
+const DECOY_HASH = hashPassword(randomBytes(12).toString("hex"));
+
+function verifyPassword(password: string, stored: string | null) {
+  const target = stored?.startsWith("scrypt:") ? stored : DECOY_HASH;
+  const [, salt, hash] = target.split(":");
   const actual = scryptSync(password, salt, 32);
   const expected = Buffer.from(hash, "hex");
-  if (actual.length !== expected.length) return false;
-  return timingSafeEqual(actual, expected);
+  const matches =
+    actual.length === expected.length && timingSafeEqual(actual, expected);
+  return matches && target === stored;
 }
 
-function validEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+/* ───────────────────────────── validation ──────────────────────────── */
+
+function cleanEmail(raw: unknown) {
+  const email = String(raw ?? "").trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 180) {
+    throw new AuthError("Enter a valid email address.", 400);
+  }
+  return email;
 }
 
-async function issue(user: {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  workspaceId: number | null;
-  role: string;
-  provider: string;
-}) {
-  if (!user.workspaceId) throw new Error("This account has no workspace.");
+/* ─────────────────────────────── sessions ───────────────────────────── */
+
+type UserRow = typeof appUsers.$inferSelect;
+
+async function startSession(user: UserRow) {
+  if (!user.workspaceId) {
+    throw new AuthError("This account has no workspace. Contact support.", 409);
+  }
   const [workspace] = await db
     .select()
     .from(workspaces)
     .where(eq(workspaces.id, user.workspaceId));
+
   const sessionUser: SessionUser = {
     uid: user.uid,
     email: user.email ?? "",
@@ -56,35 +75,42 @@ async function issue(user: {
   return { user: sessionUser, token: await signSession(sessionUser) };
 }
 
-async function createWorkspaceAccount(input: {
+async function createAccountWithWorkspace(input: {
   uid: string;
   email: string;
   displayName: string;
   workspaceName: string;
   passwordHash: string | null;
-  provider: string;
+  provider: "local" | "firebase";
 }) {
-  const [workspace] = await db
-    .insert(workspaces)
-    .values({ name: input.workspaceName, ownerUid: input.uid })
-    .returning();
-  const [user] = await db
-    .insert(appUsers)
-    .values({
-      uid: input.uid,
-      email: input.email,
-      displayName: input.displayName,
-      passwordHash: input.passwordHash,
-      provider: input.provider,
-      role: "owner",
-      workspaceId: workspace.id,
-      company: input.workspaceName,
-      plan: "workspace",
-      emailVerified: input.provider === "firebase",
-    })
-    .returning();
-  return issue(user);
+  // One transaction: a failure can never leave a user without a workspace or a
+  // workspace without an owner.
+  const user = await db.transaction(async (tx) => {
+    const [workspace] = await tx
+      .insert(workspaces)
+      .values({ name: input.workspaceName, ownerUid: input.uid })
+      .returning();
+    const [created] = await tx
+      .insert(appUsers)
+      .values({
+        uid: input.uid,
+        email: input.email,
+        displayName: input.displayName,
+        passwordHash: input.passwordHash,
+        provider: input.provider,
+        role: "owner",
+        workspaceId: workspace.id,
+        company: input.workspaceName,
+        plan: "workspace",
+        emailVerified: input.provider === "firebase",
+      })
+      .returning();
+    return created;
+  });
+  return startSession(user);
 }
+
+/* ─────────────────────────────── sign up ───────────────────────────── */
 
 export async function registerWorkspace(input: {
   email?: string;
@@ -92,95 +118,121 @@ export async function registerWorkspace(input: {
   displayName?: string;
   workspaceName?: string;
 }) {
-  const email = String(input.email ?? "").trim().toLowerCase();
+  const email = cleanEmail(input.email);
   const password = String(input.password ?? "");
-  const displayName = String(input.displayName ?? "").trim();
-  const workspaceName =
-    String(input.workspaceName ?? "").trim() ||
-    (displayName ? `${displayName}'s workspace` : "My workspace");
+  const displayName = String(input.displayName ?? "").trim().slice(0, 120);
+  const workspaceName = (
+    String(input.workspaceName ?? "").trim() || `${displayName}'s workspace`
+  ).slice(0, 180);
 
-  if (!validEmail(email)) throw new Error("Enter a valid email address.");
-  if (password.length < 6) throw new Error("Use a password with at least 6 characters.");
-  if (displayName.length < 2) throw new Error("Enter your name.");
+  if (displayName.length < 2) throw new AuthError("Enter your name.", 400);
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new AuthError(
+      `Use a password with at least ${MIN_PASSWORD_LENGTH} characters.`,
+      400,
+    );
+  }
 
-  const [existing] = await db.select().from(appUsers).where(eq(appUsers.email, email));
+  const [existing] = await db
+    .select({ id: appUsers.id })
+    .from(appUsers)
+    .where(eq(appUsers.email, email));
   if (existing) {
-    throw new Error("An account already exists with this email. Log in instead.");
+    throw new AuthError("An account already exists with this email. Log in instead.", 409);
   }
 
-  let uid = `ws_${randomBytes(12).toString("hex")}`;
-  let provider = "workspace";
-
-  try {
-    const firebaseUser = await firebaseSignUp(email, password);
-    uid = firebaseUser.localId || uid;
-    provider = "firebase";
-    if (firebaseUser.idToken && displayName) {
-      await firebaseUpdateProfile(firebaseUser.idToken, displayName).catch(() => undefined);
+  if (authMode() === "firebase") {
+    let identity;
+    try {
+      identity = await firebaseSignUp(email, password);
+      if (displayName) {
+        await firebaseSetDisplayName(identity.idToken, displayName).catch(
+          () => undefined,
+        );
+      }
+    } catch (error) {
+      throw explainFirebaseError(error);
     }
-  } catch (error) {
-    if (error instanceof FirebaseAuthError) {
-      const friendly = firebaseErrorMessage(error.code);
-      if (friendly && error.code.includes("EMAIL_EXISTS")) throw new Error(friendly);
-      // Provider disabled or the browser/project cannot complete Firebase
-      // sign-up. The workspace account below still lets the team in.
-    } else {
-      throw error;
-    }
+    return createAccountWithWorkspace({
+      uid: identity.localId,
+      email,
+      displayName,
+      workspaceName,
+      passwordHash: null,
+      provider: "firebase",
+    });
   }
 
-  return createWorkspaceAccount({
-    uid,
+  return createAccountWithWorkspace({
+    uid: `usr_${randomBytes(12).toString("hex")}`,
     email,
     displayName,
-    workspaceName: workspaceName.slice(0, 180),
+    workspaceName,
     passwordHash: hashPassword(password),
-    provider,
+    provider: "local",
   });
 }
 
-export async function loginWorkspace(input: { email?: string; password?: string }) {
-  const email = String(input.email ?? "").trim().toLowerCase();
+/* ─────────────────────────────── log in ────────────────────────────── */
+
+export async function loginWorkspace(input: {
+  email?: string;
+  password?: string;
+  ip: string;
+}) {
+  const email = cleanEmail(input.email);
   const password = String(input.password ?? "");
-  if (!validEmail(email) || !password) {
-    throw new Error("Enter your email and password.");
-  }
+  if (!password) throw new AuthError("Enter your password.", 400);
 
-  const [local] = await db.select().from(appUsers).where(eq(appUsers.email, email));
-  if (local?.passwordHash && checkPassword(password, local.passwordHash)) {
-    await db
-      .update(appUsers)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(appUsers.id, local.id));
-    return issue(local);
-  }
+  const key = throttleKey(email, input.ip);
+  await assertNotThrottled(key);
 
-  try {
-    const firebaseUser = await firebaseSignIn(email, password);
+  const [user] = await db.select().from(appUsers).where(eq(appUsers.email, email));
+
+  if (authMode() === "firebase") {
+    let identity;
+    try {
+      identity = await firebaseSignIn(email, password);
+    } catch (error) {
+      const explained = explainFirebaseError(error);
+      if (explained.status === 401) await recordFailure(key);
+      throw explained;
+    }
+
     const [known] = await db
       .select()
       .from(appUsers)
-      .where(eq(appUsers.uid, firebaseUser.localId));
+      .where(eq(appUsers.uid, identity.localId));
+    await clearFailures(key);
+
     if (known) {
       await db
         .update(appUsers)
-        .set({ lastLoginAt: new Date(), provider: "firebase" })
+        .set({ lastLoginAt: new Date() })
         .where(eq(appUsers.id, known.id));
-      return issue(known);
+      return startSession(known);
     }
-    return createWorkspaceAccount({
-      uid: firebaseUser.localId,
-      email: firebaseUser.email || email,
-      displayName: firebaseUser.displayName || email.split("@")[0],
-      workspaceName: "My workspace",
-      passwordHash: hashPassword(password),
+    // Valid Firebase identity that has never opened a workspace here.
+    return createAccountWithWorkspace({
+      uid: identity.localId,
+      email,
+      displayName: identity.displayName || email.split("@")[0],
+      workspaceName: `${identity.displayName || email.split("@")[0]}'s workspace`,
+      passwordHash: null,
       provider: "firebase",
     });
-  } catch (error) {
-    if (error instanceof FirebaseAuthError) {
-      const friendly = firebaseErrorMessage(error.code);
-      if (friendly) throw new Error(friendly);
-    }
-    throw new Error("Email or password is incorrect.");
   }
+
+  // local mode: the database is the single source of truth
+  if (!user || user.provider !== "local" || !verifyPassword(password, user.passwordHash)) {
+    await recordFailure(key);
+    throw new AuthError("Email or password is incorrect.", 401);
+  }
+
+  await clearFailures(key);
+  await db
+    .update(appUsers)
+    .set({ lastLoginAt: new Date() })
+    .where(eq(appUsers.id, user.id));
+  return startSession(user);
 }

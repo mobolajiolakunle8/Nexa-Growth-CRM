@@ -1,8 +1,9 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { firebaseConfig } from "@/lib/firebase/config";
+import { getAuthSecret } from "@/lib/auth/secret";
 
 export const SESSION_COOKIE = "nxg_session";
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 export type SessionUser = {
   uid: string;
@@ -14,25 +15,20 @@ export type SessionUser = {
   provider: string;
 };
 
-function secret() {
-  const raw =
-    process.env.AUTH_SECRET ||
-    `${firebaseConfig.apiKey}:nexagrowth-workspace-session`;
-  return new TextEncoder().encode(raw);
-}
-
 export async function signSession(user: SessionUser) {
-  return new SignJWT(user)
+  const { key } = await getAuthSecret();
+  return new SignJWT({ ...user })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("30d")
-    .sign(secret());
+    .setExpirationTime(`${MAX_AGE_SECONDS}s`)
+    .sign(key);
 }
 
 export async function readSessionToken(token: string | undefined | null) {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const { key } = await getAuthSecret();
+    const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
     const workspaceId = Number(payload.workspaceId);
     if (!payload.uid || !Number.isFinite(workspaceId)) return null;
     return {
@@ -42,21 +38,11 @@ export async function readSessionToken(token: string | undefined | null) {
       workspaceId,
       workspaceName: String(payload.workspaceName ?? "Workspace"),
       role: String(payload.role ?? "owner"),
-      provider: String(payload.provider ?? "workspace"),
+      provider: String(payload.provider ?? "local"),
     } satisfies SessionUser;
   } catch {
     return null;
   }
-}
-
-export function sessionCookieOptions() {
-  return {
-    httpOnly: true,
-    sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  };
 }
 
 export async function readRequestSession(request: Request) {
@@ -65,7 +51,9 @@ export async function readRequestSession(request: Request) {
     .split(";")
     .map((part) => part.trim())
     .find((part) => part.startsWith(`${SESSION_COOKIE}=`));
-  const token = match ? decodeURIComponent(match.slice(SESSION_COOKIE.length + 1)) : "";
+  const token = match
+    ? decodeURIComponent(match.slice(SESSION_COOKIE.length + 1))
+    : "";
   return readSessionToken(token);
 }
 
@@ -74,13 +62,15 @@ export async function readPageSession() {
   return readSessionToken(jar.get(SESSION_COOKIE)?.value);
 }
 
+function cookieAttributes(maxAge: number) {
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${secure}`;
+}
+
 export function applySession(response: Response, token: string) {
-  const options = sessionCookieOptions();
   response.headers.append(
     "Set-Cookie",
-    `${SESSION_COOKIE}=${token}; Path=${options.path}; Max-Age=${options.maxAge}; HttpOnly; SameSite=Lax${
-      options.secure ? "; Secure" : ""
-    }`,
+    `${SESSION_COOKIE}=${token}; ${cookieAttributes(MAX_AGE_SECONDS)}`,
   );
   return response;
 }
@@ -88,7 +78,7 @@ export function applySession(response: Response, token: string) {
 export function clearSession(response: Response) {
   response.headers.append(
     "Set-Cookie",
-    `${SESSION_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`,
+    `${SESSION_COOKIE}=; ${cookieAttributes(0)}`,
   );
   return response;
 }

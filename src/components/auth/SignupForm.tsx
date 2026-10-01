@@ -80,11 +80,11 @@ export default function SignupForm() {
           required
           type="password"
           autoComplete="new-password"
-          minLength={6}
+          minLength={8}
           className={authField}
           value={form.password}
           onChange={(event) => update("password", event.target.value)}
-          placeholder="At least 6 characters"
+          placeholder="At least 8 characters"
         />
       </label>
       {error && (

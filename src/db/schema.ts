@@ -10,6 +10,22 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key", { length: 80 }).primaryKey(),
+  value: text("value").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const authAttempts = pgTable("auth_attempts", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 300 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const workspaces = pgTable("workspaces", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),

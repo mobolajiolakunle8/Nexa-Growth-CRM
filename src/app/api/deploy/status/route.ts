@@ -1,6 +1,9 @@
 import { sql } from "drizzle-orm";
 import { checkDatabase, db, isServerless } from "@/db";
+import { authMode } from "@/lib/auth/config";
+import { getAuthSecret } from "@/lib/auth/secret";
 import { firebaseConfig } from "@/lib/firebase/config";
+import { probeFirebase } from "@/lib/firebase/rest";
 
 export const dynamic = "force-dynamic";
 
@@ -73,8 +76,31 @@ export async function GET() {
     };
   }
 
+  const mode = authMode();
+  const secret = await getAuthSecret().catch(() => null);
+  const firebase = mode === "firebase" ? await probeFirebase() : null;
+  const auth = {
+    mode,
+    sessionSecret: secret?.source ?? "unavailable",
+    firebase,
+  };
+  const authReady =
+    secret !== null &&
+    (mode === "local" ||
+      (firebase?.reachable === true && firebase.emailPasswordEnabled === true));
+  if (!authReady) {
+    missing.push(
+      mode === "firebase"
+        ? "AUTH_PROVIDER=firebase but Firebase Email/Password sign-in is not usable"
+        : "session secret",
+    );
+  }
+
   const ready =
-    missing.length === 0 && database.connected === true && missingTables.length === 0;
+    authReady &&
+    missing.length === 0 &&
+    database.connected === true &&
+    missingTables.length === 0;
 
   return Response.json(
     {
@@ -91,6 +117,7 @@ export async function GET() {
         serverlessPooling: isServerless,
       },
       env,
+      auth,
       missing,
       database,
       checkedAt: new Date().toISOString(),
