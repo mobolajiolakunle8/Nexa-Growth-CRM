@@ -481,6 +481,8 @@ async function tableCount(table: "deals") {
 }
 
 async function runSeed() {
+  // New workspaces start empty. Demo financial records are not loaded.
+  return;
   if ((await tableCount("deals")) > 0) return;
 
   const insertedCompanies = await db

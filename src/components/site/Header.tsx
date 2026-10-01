@@ -176,7 +176,7 @@ export default function Header() {
           {user ? (
             <>
               <span className="text-[13px] font-semibold text-slate-500">
-                {user.displayName || user.email}
+                {user.name || user.email}
               </span>
               <Link href="/app/crm" className={btnAqua + " !px-4 !py-2.5"}>
                 Open workspace

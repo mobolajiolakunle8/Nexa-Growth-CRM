@@ -60,6 +60,7 @@ async function ensureStripeInstalled() {
 }
 
 async function runStripeSeed() {
+  return;
   await ensureSeed();
   await ensureStripeInstalled();
 

@@ -51,7 +51,7 @@ export default function Footer() {
             <Logo invert />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/65">
               The online workspace your whole company runs on: CRM, projects,
-              sites, automation and BI — from ₦18,000 per organisation, not per
+              sites, automation and BI — one workspace for the organisation, not a
               user.
             </p>
             <div className="mt-6">

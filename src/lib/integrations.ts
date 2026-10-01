@@ -33,6 +33,7 @@ export function resourceEvent(
 let seedPromise: Promise<void> | null = null;
 
 async function runIntegrationSeed() {
+  return;
   const existing = await db
     .select({ id: integrationConnections.id })
     .from(integrationConnections)

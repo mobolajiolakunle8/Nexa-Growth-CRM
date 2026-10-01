@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   activities,
@@ -55,19 +55,38 @@ function asDate(value: unknown) {
   return parsed.toISOString().slice(0, 10);
 }
 
-export async function listResource(resource: CrmResource) {
-  await ensureSeed();
+export async function listResource(resource: CrmResource, workspaceId: number) {
   switch (resource) {
     case "deals":
-      return db.select().from(deals).orderBy(deals.position, deals.id);
+      return db
+        .select()
+        .from(deals)
+        .where(eq(deals.workspaceId, workspaceId))
+        .orderBy(deals.position, deals.id);
     case "contacts":
-      return db.select().from(contacts).orderBy(contacts.id);
+      return db
+        .select()
+        .from(contacts)
+        .where(eq(contacts.workspaceId, workspaceId))
+        .orderBy(contacts.id);
     case "companies":
-      return db.select().from(companies).orderBy(companies.id);
+      return db
+        .select()
+        .from(companies)
+        .where(eq(companies.workspaceId, workspaceId))
+        .orderBy(companies.id);
     case "tasks":
-      return db.select().from(tasks).orderBy(tasks.id);
+      return db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.workspaceId, workspaceId))
+        .orderBy(tasks.id);
     case "activities":
-      return db.select().from(activities).orderBy(activities.id);
+      return db
+        .select()
+        .from(activities)
+        .where(eq(activities.workspaceId, workspaceId))
+        .orderBy(activities.id);
   }
 }
 
@@ -78,6 +97,7 @@ export async function createResource(resource: CrmResource, body: Record<string,
       const [created] = await db
         .insert(deals)
         .values({
+          workspaceId: asOptionalId(body.workspaceId),
           title: asString(body.title, "Untitled deal"),
           amount: String(asNumber(body.amount)),
           currency: asString(body.currency, "NGN"),
@@ -101,6 +121,7 @@ export async function createResource(resource: CrmResource, body: Record<string,
       const [created] = await db
         .insert(contacts)
         .values({
+          workspaceId: asOptionalId(body.workspaceId),
           firstName: asString(body.firstName, "New"),
           lastName: asString(body.lastName, "Contact"),
           email: asOptionalString(body.email),
@@ -119,6 +140,7 @@ export async function createResource(resource: CrmResource, body: Record<string,
       const [created] = await db
         .insert(companies)
         .values({
+          workspaceId: asOptionalId(body.workspaceId),
           name: asString(body.name, "New company"),
           industry: asString(body.industry, "Other"),
           website: asOptionalString(body.website),
@@ -137,6 +159,7 @@ export async function createResource(resource: CrmResource, body: Record<string,
       const [created] = await db
         .insert(tasks)
         .values({
+          workspaceId: asOptionalId(body.workspaceId),
           title: asString(body.title, "New task"),
           description: asOptionalString(body.description),
           status: asString(body.status, "todo"),
@@ -153,6 +176,7 @@ export async function createResource(resource: CrmResource, body: Record<string,
       const [created] = await db
         .insert(activities)
         .values({
+          workspaceId: asOptionalId(body.workspaceId),
           type: asString(body.type, "note"),
           subject: asString(body.subject, "Timeline update"),
           body: asOptionalString(body.body),
@@ -171,6 +195,7 @@ export async function updateResource(
   resource: CrmResource,
   id: number,
   body: Record<string, unknown>,
+  workspaceId: number,
 ) {
   switch (resource) {
     case "deals": {
@@ -200,7 +225,7 @@ export async function updateResource(
       const [updated] = await db
         .update(deals)
         .set(patch)
-        .where(eq(deals.id, id))
+.where(and(eq(deals.id, id), eq(deals.workspaceId, workspaceId)))
         .returning();
       return updated;
     }
@@ -219,7 +244,7 @@ export async function updateResource(
       const [updated] = await db
         .update(contacts)
         .set(patch)
-        .where(eq(contacts.id, id))
+.where(and(eq(contacts.id, id), eq(contacts.workspaceId, workspaceId)))
         .returning();
       return updated;
     }
@@ -240,7 +265,7 @@ export async function updateResource(
       const [updated] = await db
         .update(companies)
         .set(patch)
-        .where(eq(companies.id, id))
+.where(and(eq(companies.id, id), eq(companies.workspaceId, workspaceId)))
         .returning();
       return updated;
     }
@@ -257,7 +282,7 @@ export async function updateResource(
       const [updated] = await db
         .update(tasks)
         .set(patch)
-        .where(eq(tasks.id, id))
+.where(and(eq(tasks.id, id), eq(tasks.workspaceId, workspaceId)))
         .returning();
       return updated;
     }
@@ -272,29 +297,33 @@ export async function updateResource(
       const [updated] = await db
         .update(activities)
         .set(patch)
-        .where(eq(activities.id, id))
+.where(and(eq(activities.id, id), eq(activities.workspaceId, workspaceId)))
         .returning();
       return updated;
     }
   }
 }
 
-export async function deleteResource(resource: CrmResource, id: number) {
+export async function deleteResource(
+  resource: CrmResource,
+  id: number,
+  workspaceId: number,
+) {
   switch (resource) {
     case "deals":
-      await db.delete(deals).where(eq(deals.id, id));
+      await db.delete(deals).where(and(eq(deals.id, id), eq(deals.workspaceId, workspaceId)));
       return;
     case "contacts":
-      await db.delete(contacts).where(eq(contacts.id, id));
+      await db.delete(contacts).where(and(eq(contacts.id, id), eq(contacts.workspaceId, workspaceId)));
       return;
     case "companies":
-      await db.delete(companies).where(eq(companies.id, id));
+      await db.delete(companies).where(and(eq(companies.id, id), eq(companies.workspaceId, workspaceId)));
       return;
     case "tasks":
-      await db.delete(tasks).where(eq(tasks.id, id));
+      await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.workspaceId, workspaceId)));
       return;
     case "activities":
-      await db.delete(activities).where(eq(activities.id, id));
+      await db.delete(activities).where(and(eq(activities.id, id), eq(activities.workspaceId, workspaceId)));
       return;
   }
 }

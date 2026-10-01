@@ -5,7 +5,7 @@ import { Logo } from "@/components/brand";
 const POINTS = [
   "Unlimited contacts, deals and tasks on every plan",
   "WhatsApp, Slack, Stripe and Microsoft 365 built in",
-  "Naira billing with flat per-workspace pricing",
+  "A private workspace for every new signup",
 ];
 
 export default function AuthShell({

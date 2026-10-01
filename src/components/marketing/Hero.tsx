@@ -5,25 +5,25 @@ const PIPELINE_PREVIEW = [
   {
     name: "New",
     tone: "from-sky-400 to-sky-500",
-    total: "₦48.2M",
+    total: "New",
     deals: ["Orbit Media bundle", "Sunrise storefront"],
   },
   {
     name: "Qualified",
     tone: "from-indigo-400 to-indigo-500",
-    total: "₦342.9M",
+    total: "Active",
     deals: ["Vertex 480 seats", "Lumen 6 clinics"],
   },
   {
     name: "Proposal",
     tone: "from-amber-400 to-orange-500",
-    total: "₦150.9M",
+    total: "Review",
     deals: ["Baltic automation", "Brightpath CRM"],
   },
   {
     name: "Closed won",
     tone: "from-emerald-400 to-emerald-500",
-    total: "₦220.2M",
+    total: "Won",
     deals: ["Fintech Hive", "Studio Fornax"],
   },
 ];
@@ -115,7 +115,7 @@ export default function Hero() {
 
               <div className="mb-4 grid grid-cols-3 gap-3">
                 {[
-                  { label: "Open pipeline", value: "₦760M", tone: "text-brand-600" },
+                  { label: "Open deals", value: "24", tone: "text-brand-600" },
                   { label: "Win rate", value: "67%", tone: "text-mint-400" },
                   { label: "Avg. cycle", value: "23d", tone: "text-violet-400" },
                 ].map((stat) => (

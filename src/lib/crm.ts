@@ -108,9 +108,8 @@ export type DashboardStats = {
   ownerTotals: { owner: string; total: number; count: number }[];
 };
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  await ensureSeed();
-
+export async function getDashboardStats(workspaceId = 0): Promise<DashboardStats> {
+  const scope = eq(deals.workspaceId, workspaceId);
   const [aggregate] = await db
     .select({
       openPipeline: sql<string>`coalesce(sum(case when ${deals.stage} not in ('won','lost') then ${deals.amount} else 0 end), 0)`,
@@ -120,7 +119,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       lostDealCount: sql<string>`count(*) filter (where ${deals.stage} = 'lost')`,
       totalDealCount: sql<string>`count(*)`,
     })
-    .from(deals);
+    .from(deals)
+    .where(scope);
 
   const stageRows = await db
     .select({
@@ -129,6 +129,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       count: sql<string>`count(*)`,
     })
     .from(deals)
+    .where(scope)
     .groupBy(deals.stage);
 
   const sourceRows = await db
@@ -137,6 +138,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       total: sql<string>`coalesce(sum(${deals.amount}), 0)`,
     })
     .from(deals)
+    .where(scope)
     .groupBy(deals.source)
     .orderBy(desc(sql`sum(${deals.amount})`))
     .limit(5);
@@ -148,22 +150,26 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       count: sql<string>`count(*)`,
     })
     .from(deals)
+    .where(scope)
     .groupBy(deals.owner)
     .orderBy(desc(sql`sum(${deals.amount})`))
     .limit(5);
 
   const [contactCount] = await db
     .select({ value: sql<string>`count(*)` })
-    .from(contacts);
+    .from(contacts)
+    .where(eq(contacts.workspaceId, workspaceId));
   const [companyCount] = await db
     .select({ value: sql<string>`count(*)` })
-    .from(companies);
+    .from(companies)
+    .where(eq(companies.workspaceId, workspaceId));
   const [taskCounts] = await db
     .select({
       open: sql<string>`count(*) filter (where ${tasks.status} <> 'completed')`,
       overdue: sql<string>`count(*) filter (where ${tasks.status} <> 'completed' and ${tasks.dueDate} < current_date)`,
     })
-    .from(tasks);
+    .from(tasks)
+    .where(eq(tasks.workspaceId, workspaceId));
 
   const openPipeline = Number(aggregate?.openPipeline ?? 0);
   const wonRevenue = Number(aggregate?.wonRevenue ?? 0);
@@ -209,8 +215,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   };
 }
 
-export async function getDeals(): Promise<DealWithRelations[]> {
-  await ensureSeed();
+export async function getDeals(workspaceId = 0): Promise<DealWithRelations[]> {
   const rows = await db
     .select({
       deal: deals,
@@ -221,6 +226,7 @@ export async function getDeals(): Promise<DealWithRelations[]> {
     .from(deals)
     .leftJoin(contacts, eq(deals.contactId, contacts.id))
     .leftJoin(companies, eq(deals.companyId, companies.id))
+    .where(eq(deals.workspaceId, workspaceId))
     .orderBy(deals.position, desc(deals.createdAt));
 
   return rows.map((row) => ({
@@ -262,8 +268,7 @@ export async function getCompanies(): Promise<CompanyWithStats[]> {
   }));
 }
 
-export async function getTasks(): Promise<TaskWithRelations[]> {
-  await ensureSeed();
+export async function getTasks(workspaceId = 0): Promise<TaskWithRelations[]> {
   const rows = await db
     .select({
       task: tasks,
@@ -274,6 +279,7 @@ export async function getTasks(): Promise<TaskWithRelations[]> {
     .from(tasks)
     .leftJoin(deals, eq(tasks.dealId, deals.id))
     .leftJoin(contacts, eq(tasks.contactId, contacts.id))
+    .where(eq(tasks.workspaceId, workspaceId))
     .orderBy(tasks.status, tasks.dueDate);
 
   return rows.map((row) => ({
@@ -286,8 +292,10 @@ export async function getTasks(): Promise<TaskWithRelations[]> {
   }));
 }
 
-export async function getActivities(limit = 25): Promise<ActivityWithRelations[]> {
-  await ensureSeed();
+export async function getActivities(
+  limit = 25,
+  workspaceId = 0,
+): Promise<ActivityWithRelations[]> {
   const rows = await db
     .select({
       activity: activities,
@@ -298,6 +306,7 @@ export async function getActivities(limit = 25): Promise<ActivityWithRelations[]
     .from(activities)
     .leftJoin(deals, eq(activities.dealId, deals.id))
     .leftJoin(contacts, eq(activities.contactId, contacts.id))
+    .where(eq(activities.workspaceId, workspaceId))
     .orderBy(desc(activities.occurredAt))
     .limit(limit);
 

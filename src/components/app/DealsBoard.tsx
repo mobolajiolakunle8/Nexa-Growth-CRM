@@ -259,19 +259,17 @@ export default function DealsBoard() {
 
       <div className="mt-6 flex flex-wrap gap-3">
         {[
-          { label: "Open pipeline", value: money(openValue, true) },
           {
-            label: "Deals",
+            label: "Open deals",
             value: String(visible.filter((d) => d.stage !== "won" && d.stage !== "lost").length),
           },
           {
-            label: "Weighted forecast",
-            value: money(
-              visible
-                .filter((d) => d.stage !== "won" && d.stage !== "lost")
-                .reduce((total, deal) => total + (Number(deal.amount) * deal.probability) / 100, 0),
-              true,
-            ),
+            label: "Won",
+            value: String(visible.filter((d) => d.stage === "won").length),
+          },
+          {
+            label: "Owners",
+            value: String(new Set(visible.map((deal) => deal.owner)).size),
           },
         ].map((item) => (
           <div
@@ -325,7 +323,7 @@ export default function DealsBoard() {
                     {stage.label}
                   </span>
                   <span className="text-xs font-bold text-slate-500">
-                    {money(total, true)}
+                    {columnDeals.length}
                   </span>
                 </div>
 
@@ -348,8 +346,8 @@ export default function DealsBoard() {
                         {dealSubtitle(deal)}
                       </p>
                       <div className="mt-3 flex items-center justify-between">
-                        <span className="text-sm font-extrabold text-brand-950">
-                          {money(deal.amount)}
+                        <span className="text-xs font-semibold text-slate-500">
+                          {deal.owner}
                         </span>
                         <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                           {deal.probability}%
@@ -417,18 +415,6 @@ export default function DealsBoard() {
                   value={form.title}
                   onChange={(event) => update("title", event.target.value)}
                   placeholder="Acme Corp — CRM rollout"
-                />
-              </label>
-              <label>
-                <span className={LABEL}>Amount (₦)</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="100"
-                  className={FIELD}
-                  value={form.amount}
-                  onChange={(event) => update("amount", event.target.value)}
-                  placeholder="25000"
                 />
               </label>
               <label>

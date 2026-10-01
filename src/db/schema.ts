@@ -10,8 +10,18 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+export const workspaces = pgTable("workspaces", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 180 }).notNull(),
+  ownerUid: varchar("owner_uid", { length: 128 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
+  workspaceId: integer("workspace_id"),
   name: varchar("name", { length: 180 }).notNull(),
   industry: varchar("industry", { length: 120 }).notNull().default("Other"),
   website: varchar("website", { length: 200 }),
@@ -31,6 +41,7 @@ export const companies = pgTable("companies", {
 
 export const contacts = pgTable("contacts", {
   id: serial("id").primaryKey(),
+  workspaceId: integer("workspace_id"),
   firstName: varchar("first_name", { length: 100 }).notNull(),
   lastName: varchar("last_name", { length: 100 }).notNull().default(""),
   email: varchar("email", { length: 180 }),
@@ -51,6 +62,7 @@ export const contacts = pgTable("contacts", {
 
 export const deals = pgTable("deals", {
   id: serial("id").primaryKey(),
+  workspaceId: integer("workspace_id"),
   title: varchar("title", { length: 200 }).notNull(),
   contactId: integer("contact_id"),
   companyId: integer("company_id"),
@@ -73,6 +85,7 @@ export const deals = pgTable("deals", {
 
 export const activities = pgTable("activities", {
   id: serial("id").primaryKey(),
+  workspaceId: integer("workspace_id"),
   type: varchar("type", { length: 30 }).notNull().default("call"),
   subject: varchar("subject", { length: 220 }).notNull(),
   body: text("body"),
@@ -87,6 +100,7 @@ export const activities = pgTable("activities", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
+  workspaceId: integer("workspace_id"),
   title: varchar("title", { length: 220 }).notNull(),
   description: text("description"),
   status: varchar("status", { length: 30 }).notNull().default("todo"),
@@ -128,11 +142,13 @@ export const appUsers = pgTable("app_users", {
   email: varchar("email", { length: 180 }),
   displayName: varchar("display_name", { length: 180 }),
   photoUrl: varchar("photo_url", { length: 500 }),
+  passwordHash: text("password_hash"),
   provider: varchar("provider", { length: 40 }).notNull().default("password"),
-  role: varchar("role", { length: 30 }).notNull().default("member"),
+  role: varchar("role", { length: 30 }).notNull().default("owner"),
+  workspaceId: integer("workspace_id"),
   company: varchar("company", { length: 180 }),
   phone: varchar("phone", { length: 60 }),
-  plan: varchar("plan", { length: 40 }).notNull().default("professional"),
+  plan: varchar("plan", { length: 40 }).notNull().default("workspace"),
   emailVerified: boolean("email_verified").notNull().default(false),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true })
     .notNull()

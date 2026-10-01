@@ -5,7 +5,7 @@ import { useState } from "react";
 const ITEMS = [
   {
     q: "How is NexagrowthCRM priced compared to other CRMs?",
-    a: "You pay for the workspace, not per seat. A Professional workspace at ₦299,000/month covers 100 employees, so adding a rep costs nothing extra. Most teams switching from per-seat CRMs save 40-70% in the first year.",
+    a: "You pay for the workspace, not per seat. Adding a rep does not add a licence. Most teams switching from per-seat CRMs simplify their stack in the first year.",
   },
   {
     q: "Can I migrate from another CRM without losing data?",

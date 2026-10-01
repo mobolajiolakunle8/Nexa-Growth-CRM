@@ -166,7 +166,7 @@ export default function CompaniesPage() {
             Companies
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {companies.length} accounts · {money(totalRevenue, true)} combined
+            {companies.length} accounts in this workspace
             annual revenue
           </p>
         </div>
@@ -223,7 +223,7 @@ export default function CompaniesPage() {
               <div className="flex items-center justify-between">
                 <dt className="text-slate-500">Annual revenue</dt>
                 <dd className="font-bold text-brand-950">
-                  {money(company.annualRevenue, true)}
+                  {company.industry}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -362,16 +362,7 @@ export default function CompaniesPage() {
                   placeholder="company.com"
                 />
               </label>
-              <label>
-                <span className={LABEL}>Annual revenue (₦)</span>
-                <input
-                  type="number"
-                  min="0"
-                  className={FIELD}
-                  value={form.annualRevenue}
-                  onChange={(event) => update("annualRevenue", event.target.value)}
-                />
-              </label>
+
               <label>
                 <span className={LABEL}>Email</span>
                 <input

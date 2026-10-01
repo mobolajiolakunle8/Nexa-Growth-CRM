@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { readPageSession } from "@/lib/auth/session";
 import {
   getActivities,
   getDashboardStats,
   getDeals,
   getTasks,
 } from "@/lib/crm";
-import { STAGES, initials, money, shortDate } from "@/lib/types";
+import { STAGES, initials, shortDate } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +46,13 @@ const ACTIVITY_ICONS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
+  const session = await readPageSession();
+  if (!session) redirect("/login");
   const [stats, deals, tasks, activities] = await Promise.all([
-    getDashboardStats(),
-    getDeals(),
-    getTasks(),
-    getActivities(6),
+    getDashboardStats(session.workspaceId),
+    getDeals(session.workspaceId),
+    getTasks(session.workspaceId),
+    getActivities(6, session.workspaceId),
   ]);
 
   const maxStage = Math.max(...stats.stageTotals.map((item) => item.total), 1);
@@ -63,16 +67,16 @@ export default async function DashboardPage() {
 
   const kpiValues: Record<string, { value: string; sub: string }> = {
     pipeline: {
-      value: money(stats.openPipeline, true),
-      sub: `${stats.openDealCount} active deals`,
+      value: String(stats.openDealCount),
+      sub: "open deals",
     },
     won: {
-      value: money(stats.wonRevenue, true),
-      sub: `${stats.wonDealCount} deals won`,
+      value: String(stats.wonDealCount),
+      sub: "deals won",
     },
     winrate: {
       value: `${stats.winRate}%`,
-      sub: `avg deal ${money(stats.avgDealSize, true)}`,
+      sub: "won against lost",
     },
     tasks: {
       value: String(stats.openTaskCount),
@@ -88,7 +92,7 @@ export default async function DashboardPage() {
             Dashboard
           </p>
           <h1 className="mt-1.5 text-3xl font-extrabold tracking-tight text-brand-950">
-            Good morning, Amara
+            {session.workspaceName}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {stats.contactCount} contacts · {stats.companyCount} companies ·{" "}
@@ -160,7 +164,7 @@ export default async function DashboardPage() {
             {stats.stageTotals.map((stage, index) => (
               <div key={stage.key} className="flex flex-1 flex-col items-center gap-2">
                 <span className="text-xs font-bold text-slate-600">
-                  {money(stage.total, true)}
+                  {stage.count}
                 </span>
                 <div
                   className="animate-bar w-full rounded-t-xl"
@@ -192,7 +196,7 @@ export default async function DashboardPage() {
                       {source.source}
                     </span>
                     <span className="font-bold text-brand-950">
-                      {money(source.total, true)}
+                      {source.source}
                     </span>
                   </div>
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100">
@@ -227,7 +231,7 @@ export default async function DashboardPage() {
                         : "bg-slate-100 text-slate-500"
                     }`}
                   >
-                    {money(owner.total, true)}
+                    {owner.count}
                   </span>
                 </li>
               ))}
@@ -281,7 +285,7 @@ export default async function DashboardPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-right font-bold text-brand-950">
-                        {money(deal.amount)}
+                        {deal.stage}
                       </td>
                       <td className="px-6 py-3.5 text-right text-slate-500">
                         {shortDate(deal.expectedCloseDate)}

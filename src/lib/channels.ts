@@ -54,6 +54,7 @@ async function ensureApp(appKey: string, config: Record<string, string>, connect
 }
 
 async function runChannelSeed() {
+  return;
   await ensureSeed();
   await ensureApp("slack", { channel: "#revenue-alerts" }, "Amara Okafor");
   await ensureApp("whatsapp", { phone: "+234 802 411 0142" }, "Amara Okafor");

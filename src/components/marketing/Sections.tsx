@@ -166,10 +166,10 @@ export function ToolGrid() {
 
 function PipelineVisual() {
   const rows = [
-    { name: "Vertex Manufacturing PLC", value: "₦324M", stage: "Qualified", width: "92%", tone: "bg-indigo-500" },
-    { name: "Fintech Hive Africa", value: "₦213M", stage: "Won", width: "78%", tone: "bg-emerald-500" },
-    { name: "Sahel Logistics Group", value: "₦132M", stage: "Proposal", width: "61%", tone: "bg-amber-500" },
-    { name: "Northwind Analytics NG", value: "₦81M", stage: "Negotiation", width: "45%", tone: "bg-sky-500" },
+    { name: "Vertex Manufacturing PLC", value: "Qualified", stage: "Qualified", width: "92%", tone: "bg-indigo-500" },
+    { name: "Fintech Hive Africa", value: "Won", stage: "Won", width: "78%", tone: "bg-emerald-500" },
+    { name: "Sahel Logistics Group", value: "Proposal", stage: "Proposal", width: "61%", tone: "bg-amber-500" },
+    { name: "Northwind Analytics NG", value: "Negotiation", stage: "Negotiation", width: "45%", tone: "bg-sky-500" },
   ];
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
@@ -178,7 +178,7 @@ function PipelineVisual() {
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
             Forecast
           </p>
-          <p className="text-2xl font-extrabold text-brand-950">₦760M</p>
+          <p className="text-2xl font-extrabold text-brand-950">Active</p>
         </div>
         <span className="rounded-full bg-mint-400/15 px-3 py-1 text-xs font-bold text-emerald-600">
           +18.4% QoQ
@@ -284,7 +284,7 @@ function ContactCenterVisual() {
           <p className="text-xs font-bold uppercase tracking-wide text-brand-600">
             Quote #4218 auto-created
           </p>
-          <p className="text-sm font-semibold text-brand-950">₦14.4M · 25 seats</p>
+          <p className="text-sm font-semibold text-brand-950">25 seats · storefront</p>
         </div>
       </div>
       <div className="mt-5 flex flex-wrap gap-2">
@@ -310,7 +310,7 @@ function BiVisual() {
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
             Revenue by month
           </p>
-          <p className="text-2xl font-extrabold text-brand-950">₦2.1B</p>
+          <p className="text-2xl font-extrabold text-brand-950">Growing</p>
         </div>
         <div className="flex gap-1.5">
           {["30d", "QTD", "YTD"].map((range, index) => (

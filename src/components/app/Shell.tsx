@@ -31,11 +31,9 @@ const NAV = [
       { label: "Integrations", href: "/app/crm/integrations", icon: "M8 8h3v3H8zM13 8h3v3h-3zM8 13h3v3H8zM13 13h3v3h-3zM4 4h16v16H4z" },
       { label: "Slack", href: "/app/crm/integrations/slack", icon: "M8 8h3v3H8zM13 13h3v3h-3zM8 13h3v3H8zM13 8h3v3h-3z" },
       { label: "WhatsApp", href: "/app/crm/integrations/whatsapp", icon: "M5 6h14v9H8l-3 3V6z" },
-      { label: "Stripe", href: "/app/crm/integrations/stripe", icon: "M4 8h16v8H4zM4 12h16" },
       { label: "Shopify", href: "/app/crm/integrations/shopify", icon: "M6 7l6-3 6 3v10l-6 3-6-3V7z" },
       { label: "Microsoft 365", href: "/app/crm/integrations/microsoft", icon: "M4 6h7v12H4zM13 8h7v10h-7z" },
-      { label: "Account & team", href: "/app/crm/account", icon: "M12 12a4 4 0 100-8 4 4 0 000 8ZM5 20c1.2-3 3.9-4.5 7-4.5s5.8 1.5 7 4.5" },
-      { label: "Deployment", href: "/app/crm/deployment", icon: "M12 3l9 16H3l9-16Z" },
+
     ],
   },
 ];
@@ -43,18 +41,14 @@ const NAV = [
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, profile, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const accountName =
-    profile?.displayName ||
-    user?.displayName ||
-    user?.email?.split("@")[0] ||
-    "Workspace user";
-  const accountEmail = profile?.email ?? user?.email ?? null;
-  const photoUrl = profile?.photoUrl ?? user?.photoURL ?? null;
-  const roleLabel = profile?.role === "owner" ? "Workspace owner" : "Member";
+  const accountName = user?.name || "Workspace";
+  const accountEmail = user?.email ?? null;
+  const photoUrl = null;
+  const roleLabel = user?.workspaceName || "Workspace";
 
   function search(event: React.FormEvent) {
     event.preventDefault();
@@ -119,19 +113,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </div>
           ))}
 
-          <div className="rounded-2xl bg-gradient-to-br from-brand-600/60 to-aqua-500/30 p-4">
+          <div className="rounded-2xl bg-white/5 p-4">
             <p className="text-xs font-bold uppercase tracking-widest text-aqua-400">
-              Trial · 11 days left
+              Workspace
             </p>
             <p className="mt-1.5 text-sm font-semibold text-white">
-              Professional workspace
+              {user?.workspaceName || "Your workspace"}
             </p>
-            <Link
-              href="/pricing"
-              className="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-xs font-bold text-brand-700"
-            >
-              Upgrade plan
-            </Link>
           </div>
         </nav>
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { sectionLabel } from "@/components/brand";
-import { money } from "@/lib/types";
+
 
 type Plan = {
   name: string;
@@ -176,7 +176,7 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
             plan.highlight ? "text-white" : "text-brand-950"
           }`}
         >
-          {price === 0 ? "₦0" : money(price, true)}
+          {price === 0 ? "Free" : "Included"}
         </span>
         <span
           className={`pb-1.5 text-sm ${
