@@ -12,11 +12,27 @@ export class AuthError extends Error {
   }
 }
 
+function isDatabaseUnavailable(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  if (error.name === "DatabaseNotConfiguredError") return true;
+  const code = (error as { code?: string }).code ?? "";
+  // connection refused / DNS failure / timeout / auth failure / too many clients
+  return ["ECONNREFUSED", "ENOTFOUND", "ETIMEDOUT", "28P01", "53300", "57P03"].includes(code);
+}
+
 export function errorResponse(error: unknown, fallback: string) {
   if (error instanceof AuthError) {
     return Response.json({ error: error.message }, { status: error.status });
   }
   console.error("[auth]", error);
+  if (isDatabaseUnavailable(error)) {
+    // Operators see the real cause in the logs and on /api/deploy/status;
+    // visitors get a clear, non-technical message.
+    return Response.json(
+      { error: "Sign-in is temporarily unavailable. Please try again in a few minutes." },
+      { status: 503 },
+    );
+  }
   return Response.json({ error: fallback }, { status: 500 });
 }
 

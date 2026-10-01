@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { checkDatabase, db, isServerless } from "@/db";
+import { DATABASE_ENV_KEYS, resolveDatabaseUrl } from "@/db/url";
 import { authMode } from "@/lib/auth/config";
 import { getAuthSecret } from "@/lib/auth/secret";
 import { firebaseConfig } from "@/lib/firebase/config";
@@ -19,7 +20,7 @@ const PUBLIC_CHECKS: Record<string, boolean> = {
   NEXT_PUBLIC_FIREBASE_APP_ID: Boolean(firebaseConfig.appId),
 };
 
-const REQUIRED_SERVER_ENV = ["DATABASE_URL"];
+
 
 const EXPECTED_TABLES = [
   "companies",
@@ -37,18 +38,22 @@ const EXPECTED_TABLES = [
  * correctly without ever echoing secret values back to the caller.
  */
 export async function GET() {
+  const databaseUrl = resolveDatabaseUrl();
   const env = {
     public: PUBLIC_CHECKS,
-    server: Object.fromEntries(
-      REQUIRED_SERVER_ENV.map((key) => [key, Boolean(process.env[key])]),
-    ),
+    // keyed by the variable actually in use so the deployment panel shows it
+    server: {
+      [databaseUrl?.source ?? "DATABASE_URL"]: Boolean(databaseUrl),
+    } as Record<string, boolean>,
   };
 
   const missing = [
     ...Object.entries(PUBLIC_CHECKS)
       .filter(([, present]) => !present)
       .map(([key]) => key),
-    ...REQUIRED_SERVER_ENV.filter((key) => !process.env[key]),
+    ...(databaseUrl
+      ? []
+      : [`Postgres connection string (one of ${DATABASE_ENV_KEYS.join(", ")})`]),
   ];
 
   let database: Record<string, unknown> = { connected: false };

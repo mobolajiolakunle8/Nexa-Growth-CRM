@@ -1,5 +1,8 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool, type PoolConfig } from "pg";
+import { DatabaseNotConfiguredError, resolveDatabaseUrl } from "@/db/url";
+
+export { DatabaseNotConfiguredError } from "@/db/url";
 
 /**
  * Serverless-aware Postgres client.
@@ -43,13 +46,9 @@ function buildPoolConfig(url: string): PoolConfig {
 
 export function getPool(): Pool {
   if (!globalForDb.__nexagrowthPool) {
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      throw new Error(
-        "DATABASE_URL is required. Add it in Vercel → Settings → Environment Variables.",
-      );
-    }
-    const pool = new Pool(buildPoolConfig(url));
+    const resolved = resolveDatabaseUrl();
+    if (!resolved) throw new DatabaseNotConfiguredError();
+    const pool = new Pool(buildPoolConfig(resolved.url));
     // A pool-level error must never crash the lambda.
     pool.on("error", (error) => {
       console.error("[db] idle client error", error.message);

@@ -12,16 +12,19 @@ Firebase Authentication · Vercel.
 
 ## Deploying to Vercel
 
-### 1. Provision a Postgres database
+### 1. Connect a Postgres database (required)
 
-Vercel functions are serverless, so use a provider that supports pooled
-connections:
+The deployed site needs its own hosted database — a local development
+database is not reachable from Vercel. Without one, a production build is
+refused with a clear message.
 
-| Provider        | Use this connection string            |
-| --------------- | ------------------------------------- |
-| Neon            | the **Pooled** string (`-pooler` host) |
-| Supabase        | Connection pooling → **Transaction**   |
-| Vercel Postgres | `POSTGRES_URL`                         |
+Easiest path: **Vercel → your project → Storage → Create Database → Neon**
+(free tier), and connect it to the project. Vercel injects `DATABASE_URL` /
+`POSTGRES_URL` automatically, and the app accepts either, so nothing needs
+renaming. Supabase works too (use the pooled **Transaction** string).
+
+Then **redeploy**. The build pushes the schema, so every table is created on
+the first deploy.
 
 ### 2. Import the repo
 
